@@ -1,20 +1,5 @@
-#include "WeakPointer.hpp"
-
-class CGraphBlock : public WeakTagPointer<CGraphBlock> {
-public:
-    void doing()
-    {
-        printf("CGraphBlock do something!\n");
-    }
-};
-
-class CTextBlock : public CGraphBlock {
-public:
-    void doing()
-    {
-        printf("CTextBlock do something!\n");
-    }
-};
+#include "CaretCtrl.h"
+#include "GraphBlock.h"
 
 void Fun(CGraphBlock* p)
 {
@@ -23,58 +8,57 @@ void Fun(CGraphBlock* p)
 
 int main(int argc, char* argv[])
 {
+    //原始指针
     CGraphBlock* p = new CGraphBlock;
     CTextBlock* p1 = new CTextBlock;
 
-    p->doing();
-    p1->doing();
+    CCaretCtrl caret;
+    caret.pBlock = p1;
 
-    WeakPointer<CGraphBlock> pTmp;
-    pTmp = NULL;
-
+    //弱指针
     WeakPointer<CGraphBlock> pWeak;
+    pWeak = NULL;
+    //赋值测试
     {
         WeakPointer<CTextBlock> pWeak1;
         pWeak1 = p1;
-        pWeak = pWeak1;
+        pWeak  = pWeak1;
         pWeak1 = pWeak1;
-        if (pWeak1 != NULL) {
-            (*pWeak1).doing();
-        }
 
-        if (pWeak == pWeak1) {
-            printf("相同\n");
-        }
+        printf("pWeak == pWeak1, %d\n", pWeak == pWeak1);
+        printf("pWeak != pWeak1, %d\n", pWeak != pWeak1);
     }
 
-	if (pWeak == p1) {
-    	printf("相同\n");
-	}
-
-	if (pWeak == p) {
-    	printf("相同\n");
-	} else {
-    	printf("不同\n");
-	}	
+    //等于等于测试
+    printf("pWeak == p1, %d\n", pWeak == p1);
+    printf("pWeak == p, %d\n", pWeak == p);
+    printf("pWeak == pWeak, %d\n", pWeak == pWeak);
+    //printf("pWeak == 3, %d\n", pWeak == 3);
 
     //////////////////////////////////////////////////////////////////////////
-    if (pWeak != NULL) {
-        printf("pweak 有效\n");
-        pWeak->doing();
+    //////////////////////////////////////////////////////////////////////////
+
+    if (caret.pBlock) {
+        printf("caret.pBlock, %d\n", 1);
     }
-    //////////////////////////////////////////////////////////////////////////
+    
+    //不等于测试
+    printf("pWeak != NULL, %d\n", pWeak != NULL);
+    printf("pWeak != p, %d\n", pWeak != p);
+    printf("pWeak != p1, %d\n", pWeak != p1);
+    printf("pWeak != pWeak, %d\n", pWeak != pWeak);
 
     delete p1;
 
+    printf("pWeak != 3, %d\n", pWeak != 3);
     //////////////////////////////////////////////////////////////////////////
-    if (pWeak != NULL) {
-        printf("pweak 有效\n");
-        pWeak->doing();
-    } else {
-        printf("pweak 无效\n");
-    }
-    //////////////////////////////////////////////////////////////////////////
+    printf("pWeak != NULL, %d\n", pWeak != NULL);
+    printf("caret.pBlock != NULL, %d\n", caret.pBlock != NULL);
 
-	return 0;
+    if (!caret.pBlock) {
+        printf("caret.pBlock == NULL, %d\n", caret.pBlock == NULL);
+    }
+
+    return 0;
 }
 

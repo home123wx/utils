@@ -10,40 +10,41 @@ template<typename T>
 class WeakTagPointer {
 private:
     /**
-     * @desc 标签
-             1. 被标识类继承标签指针
-             2. 当被标识类构建对象时，标签指针中引用计数默认为1
-             3. 只有当被标识对象释放，标签中的pinter指针会被置为NULL
-             4. 当标签的引用计数为0时，会释放标签自身
+     * @desc 标签 1. 被标识类继承标签指针
+     *            2. 当被标识类构建对象时，标签指针中引用计数默认为1
+     *            3. 只有当被标识对象释放，标签中的pinter指针会被置为NULL
+     *            4. 当标签的引用计数为0时，会释放标签自身
      */
     struct WeakTag {
         WeakTag(T* p): pointer(p), count(1) { }
-        void Release()
+
+        /**
+         * @desc 减少引用计数，没有被引用释放自身
+         */
+        void WeakRelease()
         {
-            DecWeak();
-            if (Count() <= 0) {
+            --count;
+            if (count <= 0) {
                 delete this;
             }
         }
 
         /**
-        * @desc 获取标签指针
-        */
-        T* Pointer() { return pointer; }
+         * @desc 增加引用计数
+         */
+        void WeakAddRef() { ++count; }
 
         /**
-        * @desc 获取标签指针被引用个数
-        */
-        int Count() { return count; }
-        /**
-        * @desc 增加引用计数
-        */
-        void IncWeak() {++count;}
-        /**
-        * @desc 减少引用计数
-        */
-        void DecWeak() {--count;}
+         * @desc 获取标签指针
+         */
+        T* Pointer() const { return pointer; }
 
+        /**
+         * @desc 设置标签指针
+         */
+        void SetPointer(T* pObj) { pointer = pObj; }
+
+    private:
         T* pointer; //标签指针
         int count;  //引用计数
     };
@@ -59,9 +60,8 @@ public:
     virtual ~WeakTagPointer()
     {
         if (m_pWeakTag != NULL) {
-            m_pWeakTag->pointer = NULL;
-            m_pWeakTag->Release();
-            m_pWeakTag = NULL;
+            m_pWeakTag->SetPointer(NULL);
+            m_pWeakTag->WeakRelease();
         }
     }
 
@@ -78,7 +78,7 @@ public:
         }
 
         if (m_pWeakTag != NULL) {
-            m_pWeakTag->IncWeak();
+            m_pWeakTag->WeakAddRef();
         }
         return m_pWeakTag;
     }
@@ -95,7 +95,8 @@ private:
  */
 template<typename T>
 class WeakPointer {
-    typedef typename T::WeakTag WeakTagType;
+    //typedef typename T::WeakTag WeakTagType;
+    struct WeakTagType : public T::WeakTag {};
 
 public:
     WeakPointer():m_pTag(NULL) {}
@@ -124,21 +125,32 @@ public:
     }
 
     /**
+     * @desc bool重载
+     */
+    operator bool()
+    {
+        return IsValid();
+    }
+
+    //////////////////////////////////////////////////////////////////////////
+    //等于
+    //////////////////////////////////////////////////////////////////////////
+    /**
      * @desc 对指定类型指针赋值
      */
     void operator=(T* pObj)
     {
+        WeakTagType* pTag = NULL;
         if (pObj != NULL) {
             //获取对象中标识
-            WeakTagType* pTag = pObj->TagPointer();
-
+            WeakTagType* pTag = static_cast<WeakTagType*>(pObj->TagPointer());
             if (pTag != NULL) {
                 //释放自身标识数据
                 Release();
-                //赋值
-                m_pTag = pTag;
             }
         }
+        //赋值
+        m_pTag = pTag;
     }
 
     /**
@@ -163,8 +175,36 @@ public:
         operator=(obj.GetPointer());
     }
 
+    //////////////////////////////////////////////////////////////////////////
+    //等于等于
+    //////////////////////////////////////////////////////////////////////////
+
     /**
-     * @desc 判断弱指针类型是否相同
+     * @desc 判断同类型弱指针是否相同
+     */
+    bool operator==(WeakPointer& obj)
+    {
+        return IsEqual(obj);
+    }
+
+    /**
+     * @desc 判断和表示类型的指针是否相同
+     */
+    bool operator==(T* pObj)
+    {
+        return IsEqual(pObj);
+    }
+
+    /**
+     * @desc 判断和表示类型的指针是否相同, 特例NULL
+     */
+    bool operator==(const int&)
+    {
+        return !IsValid();
+    }
+
+    /**
+     * @desc 判断和其他类型的弱指针是否不同
      */
     template<typename T2>
     bool operator==(WeakPointer<T2>& obj)
@@ -172,22 +212,36 @@ public:
         return IsEqual(obj);
     }
 
-    template<typename T2>
-	bool operator==(T2* pObj)
-	{
-		return IsEqual(pObj);
-	}
+    //////////////////////////////////////////////////////////////////////////
+    //不等于
+    //////////////////////////////////////////////////////////////////////////
+    /**
+     * @desc 判断同类型弱指针是否不同
+     */
+    bool operator!=(WeakPointer& obj)
+    {
+        return !IsEqual(obj);
+    }
 
     /**
-     * 匹配 (x != NULL)
+     * @desc 判断和指针是否不同, 特例NULL
      */
-    //bool operator!=(const int&); 会有类型不匹配的waring
-    template<typename T2>
-    bool operator!=(const T2&)
+    bool operator!=(const int&)
     {
         return IsValid();
     }
 
+    /**
+     * @desc 判断和表示类型的指针是否不同
+     */
+    bool operator!=(T* pObj)
+    {
+        return !IsEqual(pObj);
+    }
+
+    //////////////////////////////////////////////////////////////////////////
+    //
+    //////////////////////////////////////////////////////////////////////////
     /**
      * @desc 获取标签指针
      */
@@ -200,16 +254,24 @@ public:
         return p;
     }
 
-private:
-    WeakPointer(const WeakPointer&);
-
     /**
      * @desc 判断标签的有效性
      * @return 是否有效
      */
-    bool IsValid()
+    bool IsValid() const
     {
-        return (m_pTag != NULL) && (m_pTag->pointer != NULL);
+        return (m_pTag != NULL) && (m_pTag->Pointer() != NULL);
+    }
+
+private:
+    WeakPointer(const WeakPointer&);
+
+    /**
+     * @desc 判断两个同类型弱指针是否相同
+     */
+    bool IsEqual(WeakPointer& obj)
+    {
+        return IsEqual(obj.m_pTag, obj.GetPointer());
     }
 
     /**
@@ -218,22 +280,27 @@ private:
     template<typename T2>
     bool IsEqual(WeakPointer<T2>& obj)
     {
+        return false;
+    }
+
+    bool IsEqual(WeakTagType* pTag, T* pObj)
+    {
         bool b = false;
-        if (m_pTag == NULL && obj.m_pTag == NULL) {
+        if (m_pTag == NULL && pTag == NULL) {
             b = true;
-        } else if (m_pTag != NULL && obj.m_pTag != NULL) {
-            bool b0 = (m_pTag == obj.m_pTag);
-            bool b1 = (m_pTag->Pointer() == obj.GetPointer());
+        } else if (m_pTag != NULL && pTag != NULL) {
+            bool b0 = (m_pTag == pTag);
+            bool b1 = (m_pTag->Pointer() == pObj);
             b = (b0 && b1);
         }
         return b;
     }
 
-    template<typename T2>
-    bool IsEqual(T2* pObj)
+    //
+    bool IsEqual(T* pObj)
     {
         bool b = false;
-        if (m_pTag != NULL && pObj!= NULL) {
+        if (m_pTag != NULL && pObj != NULL) {
             b = (m_pTag->Pointer() == pObj);
         }
         return b;
@@ -245,7 +312,7 @@ private:
     void Release()
     {
         if (m_pTag != NULL) {
-            m_pTag->Release();
+            m_pTag->WeakRelease();
         }
     }
 
