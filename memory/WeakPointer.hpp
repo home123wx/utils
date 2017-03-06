@@ -157,7 +157,7 @@ public:
      * @desc 同类型pointer的赋值
      * @param [in] pObj 同类型弱指针
      */
-    WeakPointer& operator=(WeakPointer& obj)
+    WeakPointer& operator=(const WeakPointer& obj)
     {
         if (this != &obj) {
             operator=(obj.GetPointer());
@@ -170,7 +170,7 @@ public:
      * @param [in] pObj 其他类型弱指针
      */
     template<typename T2>
-    void operator=(WeakPointer<T2>& obj)
+    void operator=(const WeakPointer<T2>& obj)
     {
         operator=(obj.GetPointer());
     }
@@ -182,7 +182,7 @@ public:
     /**
      * @desc 判断同类型弱指针是否相同
      */
-    bool operator==(WeakPointer& obj)
+    bool operator==(const WeakPointer& obj)
     {
         return IsEqual(obj);
     }
@@ -207,7 +207,7 @@ public:
      * @desc 判断和其他类型的弱指针是否不同
      */
     template<typename T2>
-    bool operator==(WeakPointer<T2>& obj)
+    bool operator==(const WeakPointer<T2>& obj)
     {
         return IsEqual(obj);
     }
@@ -218,7 +218,7 @@ public:
     /**
      * @desc 判断同类型弱指针是否不同
      */
-    bool operator!=(WeakPointer& obj)
+    bool operator!=(const WeakPointer& obj)
     {
         return !IsEqual(obj);
     }
@@ -245,7 +245,7 @@ public:
     /**
      * @desc 获取标签指针
      */
-    T* GetPointer()
+    T* GetPointer() const
     {
         T* p = NULL;
         if (m_pTag != NULL) {
@@ -269,7 +269,7 @@ private:
     /**
      * @desc 判断两个同类型弱指针是否相同
      */
-    bool IsEqual(WeakPointer& obj)
+    bool IsEqual(const WeakPointer& obj)
     {
         return IsEqual(obj.m_pTag, obj.GetPointer());
     }
@@ -278,7 +278,7 @@ private:
      * @desc 判断两个弱指针是否相同
      */
     template<typename T2>
-    bool IsEqual(WeakPointer<T2>& obj)
+    bool IsEqual(const WeakPointer<T2>& obj)
     {
         return false;
     }
