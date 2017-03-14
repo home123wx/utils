@@ -1,6 +1,6 @@
 OBJ = main.cpp WeakPointer.hpp
 GCC = g++
-Flags= 
+Flags= -std=c++11
 all:main
 
 main:${OBJ}

@@ -12,7 +12,7 @@ private:
     /**
      * @desc 标签 1. 被标识类继承标签指针
      *            2. 当被标识类构建对象时，标签指针中引用计数默认为1
-     *            3. 只有当被标识对象释放，标签中的pinter指针会被置为NULL
+     *            3. 只有当被标识对象释放，标签中的pinter指针会被置为nullptr
      *            4. 当标签的引用计数为0时，会释放标签自身
      */
     struct WeakTag {
@@ -50,17 +50,17 @@ private:
     };
 
 public:
-    WeakTagPointer() : m_pWeakTag(NULL) {}
+    WeakTagPointer() : m_pWeakTag(nullptr) {}
 
     /**
      * @desc 当子类(及被标识对象)析构时, 触发父类析构。
-     *       1. 被标识对象释放，pointer标识被值NULL
+     *       1. 被标识对象释放，pointer标识被值nullptr
      *       2. 通知其他使用者，该指针已无效
      */
     virtual ~WeakTagPointer()
     {
-        if (m_pWeakTag != NULL) {
-            m_pWeakTag->SetPointer(NULL);
+        if (m_pWeakTag != nullptr) {
+            m_pWeakTag->SetPointer(nullptr);
             m_pWeakTag->WeakRelease();
         }
     }
@@ -73,11 +73,11 @@ public:
      */
     WeakTag* TagPointer()
     {
-        if (m_pWeakTag == NULL) {
+        if (m_pWeakTag == nullptr) {
             m_pWeakTag = new WeakTag(static_cast<T*>(this));
         }
 
-        if (m_pWeakTag != NULL) {
+        if (m_pWeakTag != nullptr) {
             m_pWeakTag->WeakAddRef();
         }
         return m_pWeakTag;
@@ -95,11 +95,11 @@ private:
  */
 template<typename T>
 class WeakPointer {
-    //typedef typename T::WeakTag WeakTagType;
     struct WeakTagType : public T::WeakTag {};
 
 public:
-    WeakPointer():m_pTag(NULL) {}
+    WeakPointer():m_pTag(nullptr) {}
+    WeakPointer(const WeakPointer& wp) { operator=(wp); }
     ~WeakPointer()
     {
         Release();
@@ -107,7 +107,7 @@ public:
 
 public:
     /**
-     * @desc 获取标签指针
+     * @desc 获取弱指针中存储的指针
      */
     T* operator->()
     {
@@ -120,9 +120,19 @@ public:
     T& operator*()
     {
         T* p = GetPointer();
-        assert(p != NULL);
+        assert(p != nullptr);
         return *p;
     }
+
+    /**
+     * @desc 获取弱指针中存储的指针
+     */
+    /*
+    operator T*()
+    {
+        return GetPointer();
+    }
+    */
 
     /**
      * @desc bool重载
@@ -140,11 +150,11 @@ public:
      */
     void operator=(T* pObj)
     {
-        WeakTagType* pTag = NULL;
-        if (pObj != NULL) {
+        WeakTagType* pTag = nullptr;
+        if (pObj != nullptr) {
             //获取对象中标识
             WeakTagType* pTag = static_cast<WeakTagType*>(pObj->TagPointer());
-            if (pTag != NULL) {
+            if (pTag != nullptr) {
                 //释放自身标识数据
                 Release();
             }
@@ -198,10 +208,13 @@ public:
     /**
      * @desc 判断和表示类型的指针是否相同, 特例NULL
      */
-    bool operator==(const int&)
+    /*
+    bool operator==(const int& t)
     {
+        assert(t == 0);
         return !IsValid();
     }
+    */
 
     /**
      * @desc 判断和其他类型的弱指针是否不同
@@ -226,10 +239,13 @@ public:
     /**
      * @desc 判断和指针是否不同, 特例NULL
      */
-    bool operator!=(const int&)
+    /*
+    bool operator!=(const int& t)
     {
+        assert(t == 0);
         return IsValid();
     }
+    */
 
     /**
      * @desc 判断和表示类型的指针是否不同
@@ -247,8 +263,8 @@ public:
      */
     T* GetPointer() const
     {
-        T* p = NULL;
-        if (m_pTag != NULL) {
+        T* p = nullptr;
+        if (m_pTag != nullptr) {
             p = static_cast<T*>(m_pTag->Pointer());
         }
         return p;
@@ -260,18 +276,16 @@ public:
      */
     bool IsValid() const
     {
-        return (m_pTag != NULL) && (m_pTag->Pointer() != NULL);
+        return (m_pTag != nullptr) && (m_pTag->Pointer() != nullptr);
     }
 
 private:
-    WeakPointer(const WeakPointer&);
-
     /**
      * @desc 判断两个同类型弱指针是否相同
      */
     bool IsEqual(const WeakPointer& obj)
     {
-        return IsEqual(obj.m_pTag, obj.GetPointer());
+        return IsEqual(obj.GetPointer());
     }
 
     /**
@@ -280,30 +294,13 @@ private:
     template<typename T2>
     bool IsEqual(const WeakPointer<T2>& obj)
     {
-        return false;
-    }
-
-    bool IsEqual(WeakTagType* pTag, T* pObj)
-    {
-        bool b = false;
-        if (m_pTag == NULL && pTag == NULL) {
-            b = true;
-        } else if (m_pTag != NULL && pTag != NULL) {
-            bool b0 = (m_pTag == pTag);
-            bool b1 = (m_pTag->Pointer() == pObj);
-            b = (b0 && b1);
-        }
-        return b;
+        return IsEqual(obj.GetPointer());
     }
 
     //
     bool IsEqual(T* pObj)
     {
-        bool b = false;
-        if (m_pTag != NULL && pObj != NULL) {
-            b = (m_pTag->Pointer() == pObj);
-        }
-        return b;
+        return (GetPointer() == pObj);
     }
 
     /**
@@ -311,7 +308,7 @@ private:
      */
     void Release()
     {
-        if (m_pTag != NULL) {
+        if (m_pTag != nullptr) {
             m_pTag->WeakRelease();
         }
     }
